@@ -1,0 +1,9 @@
+# Все основные команды и одна ошибка в конце
+ls
+ls /home
+cd /home/student
+ls
+cat notes.txt
+tac /readme.txt
+cat /missing.txt
+ls /

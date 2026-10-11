@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<filesystem name="demo">
+  <directory name="/" owner="root">
+    <file name="readme.txt" owner="student">Первая строка
+Вторая строка
+Третья строка
+</file>
+    <file name="data.bin" owner="student" encoding="base64">AAECAwQ=</file>
+    <directory name="home" owner="root">
+      <directory name="student" owner="student">
+        <file name="notes.txt" owner="student">Конфигурационное управление
+Вариант 19
+</file>
+      </directory>
+    </directory>
+    <directory name="empty" owner="student" />
+  </directory>
+</filesystem>

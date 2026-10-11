@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<filesystem name="deep">
+  <directory name="/" owner="root">
+    <directory name="level1" owner="student">
+      <directory name="level2" owner="student">
+        <directory name="level3" owner="student">
+          <file name="deep.txt" owner="student">Глубокий файл</file>
+        </directory>
+      </directory>
+    </directory>
+  </directory>
+</filesystem>

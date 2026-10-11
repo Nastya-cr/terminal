@@ -1,0 +1,6 @@
+# Изменения выполняются только в памяти
+chown teacher /readme.txt /home/student
+rmdir /empty
+ls /
+rmdir /home
+ls /home
