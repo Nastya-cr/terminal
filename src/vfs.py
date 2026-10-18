@@ -22,7 +22,11 @@ class Node:
 
     @property
     def is_directory(self):
-        """Возвращает True для каталога."""
+        """Проверяет, является ли узел каталогом.
+
+        Returns:
+            bool: ``True`` для каталога и ``False`` для файла.
+        """
         return self.content is None
 
 
@@ -30,12 +34,30 @@ class VirtualFileSystem:
     """Хранит VFS, загруженную из XML."""
 
     def __init__(self, name, root):
+        """Сохраняет название VFS и её корневой узел.
+
+        Args:
+            name: Название виртуальной файловой системы.
+            root: Корневой каталог, представленный объектом ``Node``.
+        """
         self.name = name
         self.root = root
 
     @classmethod
     def load(cls, path):
-        """Загружает и проверяет XML-файл VFS."""
+        """Загружает VFS из XML-файла.
+
+        Проверяет структуру XML и создаёт в памяти дерево файлов и каталогов.
+
+        Args:
+            path: Путь к XML-файлу с описанием VFS.
+
+        Returns:
+            VirtualFileSystem: Готовая виртуальная файловая система.
+
+        Raises:
+            VfsError: Если файл не найден или XML записан неправильно.
+        """
         source = Path(path)
         try:
             xml_root = et.fromstring(source.read_bytes())
@@ -60,6 +82,20 @@ class VirtualFileSystem:
 
     @classmethod
     def _read_node(cls, element, is_root=False):
+        """Создаёт файл или каталог из элемента XML.
+
+        Для каталога также читает все вложенные элементы.
+
+        Args:
+            element: XML-элемент файла или каталога.
+            is_root: Является ли элемент корневым каталогом.
+
+        Returns:
+            Node: Созданный файл или каталог.
+
+        Raises:
+            VfsError: Если имя или тип элемента указаны неправильно.
+        """
         name = element.get("name", "")
         if not name or (not is_root and "/" in name):
             message = "неверное имя узла"
@@ -81,6 +117,19 @@ class VirtualFileSystem:
 
     @staticmethod
     def _read_content(element):
+        """Читает содержимое файла из XML.
+
+        Обычный текст переводится в байты, а base64 декодируется.
+
+        Args:
+            element: XML-элемент файла.
+
+        Returns:
+            bytes: Содержимое файла в виде байтов.
+
+        Raises:
+            VfsError: Если кодировка неизвестна или base64 неверен.
+        """
         text = element.text or ""
         encoding = element.get("encoding", "text")
         if encoding == "text":
@@ -95,13 +144,32 @@ class VirtualFileSystem:
 
     @staticmethod
     def normalize(path, cwd="/"):
-        """Нормализует путь."""
+        """Приводит путь к полному и понятному для VFS виду.
+
+        Args:
+            path: Абсолютный или относительный путь.
+            cwd: Текущий каталог для относительного пути.
+
+        Returns:
+            str: Полный путь, начинающийся с ``/``.
+        """
         combined = path if path.startswith("/") else posixpath.join(cwd, path)
         normalized = posixpath.normpath(combined)
         return normalized if normalized.startswith("/") else f"/{normalized}"
 
     def get_node(self, path, cwd="/"):
-        """Находит узел по пути."""
+        """Находит файл или каталог по пути.
+
+        Args:
+            path: Путь к нужному файлу или каталогу.
+            cwd: Текущий каталог для относительного пути.
+
+        Returns:
+            Node: Найденный файл или каталог.
+
+        Raises:
+            VfsError: Если указанный путь не существует.
+        """
         normalized = self.normalize(path, cwd)
         node = self.root
         for part in normalized.strip("/").split("/"):
@@ -115,7 +183,18 @@ class VirtualFileSystem:
         return node
 
     def get_parent(self, path, cwd="/"):
-        """Возвращает родителя и путь."""
+        """Находит каталог, в котором расположен указанный узел.
+
+        Args:
+            path: Путь к файлу или каталогу.
+            cwd: Текущий каталог для относительного пути.
+
+        Returns:
+            tuple: Родительский каталог, имя узла и полный путь.
+
+        Raises:
+            VfsError: Если запрошен родитель корневого каталога.
+        """
         normalized = self.normalize(path, cwd)
         if normalized == "/":
             message = (

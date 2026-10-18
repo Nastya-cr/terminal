@@ -20,7 +20,11 @@ class CommandResult:
 
     @property
     def ok(self):
-        """Проверяет отсутствие ошибки."""
+        """Проверяет, успешно ли выполнилась команда.
+
+        Returns:
+            bool: ``True``, если ошибки нет.
+        """
         return not self.error
 
 
@@ -28,11 +32,21 @@ class XmlLogger:
     """Сохраняет события вызова команд в XML."""
 
     def __init__(self, path):
+        """Создаёт журнал команд.
+
+        Args:
+            path: Путь к XML-файлу журнала.
+        """
         self.path = Path(path)
         self.root = et.Element("log")
 
     def write(self, command, error=""):
-        """Добавляет событие в журнал."""
+        """Записывает команду и её ошибку в XML-журнал.
+
+        Args:
+            command: Строка, введённая пользователем.
+            error: Текст ошибки или пустая строка.
+        """
         event = et.SubElement(
             self.root,
             "event",
@@ -50,12 +64,25 @@ class Shell:
     """Разбирает и выполняет команды."""
 
     def __init__(self, vfs=None, logger=None):
+        """Подготавливает командный интерпретатор.
+
+        Args:
+            vfs: Загруженная виртуальная файловая система.
+            logger: XML-журнал команд или ``None``.
+        """
         self.vfs = vfs
         self.logger = logger
         self.cwd = "/"
 
     def execute(self, command_line):
-        """Выполняет одну строку."""
+        """Разбирает и выполняет одну введённую строку.
+
+        Args:
+            command_line: Команда вместе с её аргументами.
+
+        Returns:
+            CommandResult: Результат, ошибка или команда выхода.
+        """
         parts = []
         try:
             parts = self._parse(command_line)
@@ -68,7 +95,17 @@ class Shell:
         return result
 
     def run_script(self, path):
-        """Выполняет скрипт до ошибки или exit."""
+        """Выполняет команды из файла до ошибки или ``exit``.
+
+        Args:
+            path: Путь к файлу с командами.
+
+        Returns:
+            list: Выполненные команды вместе с их результатами.
+
+        Raises:
+            OSError: Если файл со скриптом невозможно прочитать.
+        """
         dialogs = []
         for line in Path(path).read_text(encoding="utf-8").splitlines():
             command = line.strip()
@@ -82,10 +119,31 @@ class Shell:
 
     @staticmethod
     def _parse(command_line):
+        """Разделяет введённую строку на команду и аргументы.
+
+        Перед разделением раскрывает переменные окружения, например ``$HOME``.
+
+        Args:
+            command_line: Исходная строка пользователя.
+
+        Returns:
+            list: Команда и её аргументы отдельными строками.
+
+        Raises:
+            ValueError: Если в строке неправильно расставлены кавычки.
+        """
         expanded = os.path.expandvars(command_line)
         return shlex.split(expanded)
 
     def _dispatch(self, parts):
+        """Выбирает функцию для введённой команды.
+
+        Args:
+            parts: Список из названия команды и её аргументов.
+
+        Returns:
+            CommandResult: Результат выбранной команды.
+        """
         if not parts:
             return CommandResult()
         name, args = parts[0], parts[1:]
@@ -110,6 +168,14 @@ class Shell:
         return CommandResult(error=message)
 
     def _ls(self, args):
+        """Показывает файл или содержимое каталога.
+
+        Args:
+            args: Пустой список или список с одним путём.
+
+        Returns:
+            CommandResult: Список имён или сообщение об ошибке.
+        """
         if len(args) > 1:
             message = "ls: укажите не более одного пути"
             return CommandResult(error=message)
@@ -126,6 +192,14 @@ class Shell:
         return CommandResult(output="  ".join(names))
 
     def _cd(self, args):
+        """Изменяет текущий каталог VFS.
+
+        Args:
+            args: Пустой список или список с одним путём.
+
+        Returns:
+            CommandResult: Пустой результат или сообщение об ошибке.
+        """
         if len(args) > 1:
             message = "cd: укажите не более одного пути"
             return CommandResult(error=message)
@@ -140,6 +214,14 @@ class Shell:
         return CommandResult()
 
     def _cat(self, args):
+        """Читает указанные файлы по порядку.
+
+        Args:
+            args: Список путей к файлам.
+
+        Returns:
+            CommandResult: Содержимое файлов или сообщение об ошибке.
+        """
         if not args:
             message = "cat: укажите хотя бы один файл"
             return CommandResult(error=message)
@@ -152,6 +234,14 @@ class Shell:
         return CommandResult(output="".join(contents).rstrip("\n"))
 
     def _tac(self, args):
+        """Читает строки файлов в обратном порядке.
+
+        Args:
+            args: Список путей к файлам.
+
+        Returns:
+            CommandResult: Перевёрнутые строки или сообщение об ошибке.
+        """
         if not args:
             message = "tac: укажите хотя бы один файл"
             return CommandResult(error=message)
@@ -164,6 +254,15 @@ class Shell:
         return CommandResult(output="\n".join(contents))
 
     def _file_text(self, path, command):
+        """Получает текст файла для команд ``cat`` и ``tac``.
+
+        Args:
+            path: Путь к файлу в VFS.
+            command: Название команды для текста ошибки.
+
+        Returns:
+            tuple: Текст файла и пустая строка либо текст ошибки.
+        """
         try:
             node = self.vfs.get_node(path, self.cwd)
         except VfsError as error:
@@ -173,6 +272,14 @@ class Shell:
         return node.content.decode("utf-8", errors="replace"), ""
 
     def _chown(self, args):
+        """Изменяет владельца файлов и каталогов в памяти.
+
+        Args:
+            args: Имя владельца и пути к изменяемым узлам.
+
+        Returns:
+            CommandResult: Пустой результат или сообщение об ошибке.
+        """
         if len(args) < 2:
             message = "chown: нужны владелец и путь"
             return CommandResult(error=message)
@@ -182,12 +289,21 @@ class Shell:
             return CommandResult(error=message)
         for path in paths:
             try:
-                self.vfs.get_node(path, self.cwd).owner = owner
+                node = self.vfs.get_node(path, self.cwd)
+                node.owner = owner
             except VfsError as error:
                 return CommandResult(error=f"chown: {error}")
         return CommandResult()
 
     def _rmdir(self, args):
+        """Удаляет указанные пустые каталоги из памяти.
+
+        Args:
+            args: Список путей к каталогам.
+
+        Returns:
+            CommandResult: Пустой результат или сообщение об ошибке.
+        """
         if not args:
             message = "rmdir: укажите каталог"
             return CommandResult(error=message)
@@ -198,6 +314,14 @@ class Shell:
         return CommandResult()
 
     def _remove_directory(self, path):
+        """Проверяет и удаляет один каталог.
+
+        Args:
+            path: Путь к удаляемому каталогу.
+
+        Returns:
+            str: Пустая строка при успехе или текст ошибки.
+        """
         try:
             parent, name, normalized = self.vfs.get_parent(path, self.cwd)
             node = self.vfs.get_node(normalized)
@@ -214,5 +338,11 @@ class Shell:
         return ""
 
     def _log(self, command, error):
+        """Передаёт выполненную команду в XML-журнал.
+
+        Args:
+            command: Введённая команда.
+            error: Текст возникшей ошибки.
+        """
         if self.logger:
             self.logger.write(command, error)
