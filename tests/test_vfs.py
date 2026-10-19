@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from vfs import VfsError, VirtualFileSystem  # noqa: E402
+from vfs import VfsError, VirtualFileSystem  
 
 
 PROJECT = Path(__file__).parents[1]

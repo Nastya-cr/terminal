@@ -9,8 +9,8 @@ import xml.etree.ElementTree as et
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from shell import Shell, XmlLogger  # noqa: E402
-from vfs import VirtualFileSystem  # noqa: E402
+from shell import Shell, XmlLogger 
+from vfs import VirtualFileSystem 
 
 
 PROJECT = Path(__file__).parents[1]

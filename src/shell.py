@@ -171,11 +171,14 @@ class Shell:
         """Показывает файл или содержимое каталога.
 
         Args:
-            args: Пустой список или список с одним путём.
+            args: Флаг ``-l`` и путь, если они указаны.
 
         Returns:
             CommandResult: Список имён или сообщение об ошибке.
         """
+        long_format = bool(args and args[0] == "-l")
+        if long_format:
+            args = args[1:]
         if len(args) > 1:
             message = "ls: укажите не более одного пути"
             return CommandResult(error=message)
@@ -185,11 +188,21 @@ class Shell:
         except VfsError as error:
             return CommandResult(error=f"ls: {error}")
         if not node.is_directory:
+            if long_format:
+                return CommandResult(
+                    output=f"-  {node.owner}  {node.name}",
+                )
             return CommandResult(output=node.name)
         names = []
         for name, child in sorted(node.children.items()):
-            names.append(f"{name}/" if child.is_directory else name)
-        return CommandResult(output="  ".join(names))
+            shown_name = f"{name}/" if child.is_directory else name
+            if long_format:
+                kind = "d" if child.is_directory else "-"
+                names.append(f"{kind}  {child.owner}  {shown_name}")
+            else:
+                names.append(shown_name)
+        separator = "\n" if long_format else "  "
+        return CommandResult(output=separator.join(names))
 
     def _cd(self, args):
         """Изменяет текущий каталог VFS.
@@ -280,9 +293,17 @@ class Shell:
         Returns:
             CommandResult: Пустой результат или сообщение об ошибке.
         """
-        if len(args) < 2:
-            message = "chown: нужны владелец и путь"
-            return CommandResult(error=message)
+        if not args:
+            return CommandResult(
+                error="chown: укажите владельца и путь",
+            )
+
+        owner, *paths = args
+
+        if not paths:
+            return CommandResult(
+                error="chown: укажите владельца и путь",
+            )
         owner, paths = args[0], args[1:]
         if not owner:
             message = "chown: пустое имя владельца"
